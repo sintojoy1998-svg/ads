@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrator</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dexie.js for robust IndexedDB management -->
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+    <!-- Google Fonts for a nicer typeface -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Heading font: Poppins for a stronger brand look -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Use the Inter font family by default */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Header brand font (stronger visual): Poppins */
+        #main-header h1 {
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.06em;
+            font-weight: 800;
+        }
+
+        /* Custom animation for newly added items */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        /* Smooth enter/leave for autocomplete results */
+        .autocomplete-results {
+            transition: opacity 180ms ease, transform 180ms ease;
+            transform-origin: top center;
+            will-change: opacity, transform;
+        }
+        .autocomplete-results.hidden { opacity: 0; transform: translateY(-4px) scale(0.995); }
+        .autocomplete-results:not(.hidden) { opacity: 1; transform: translateY(0) scale(1); }
+
+        /* Row removal animation: fade/slide and collapse height for a smooth remove */
+        .removing {
+            opacity: 0 !important;
+            transform: translateX(10px) !important;
+            transition: opacity 200ms ease, transform 200ms ease, height 200ms ease, margin 200ms ease, padding 200ms ease;
+            height: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* Custom focus ring styles for better accessibility and aesthetics */
+        .custom-focus-ring {
+            --tw-ring-opacity: 1;
+            --tw-ring-color: rgb(56 189 248 / var(--tw-ring-opacity)); /* sky-400 */
+            --tw-ring-offset-shadow: 0 0 #0000;
+            --tw-ring-shadow: 0 0 #0000;
+            --tw-shadow: 0 0 #0000;
+            --tw-shadow-colored: 0 0 #0000;
+        }
+        .custom-focus-ring:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+
+    /* ================================================================================================ */
+    /* PRINT-SPECIFIC STYLES */
+    /* ================================================================================================ */
+        @media print {
+            @page { margin: 0.5in; }
+            body { font-family: Arial, sans-serif; background-color: #fff !important; color: #000 !important; font-size: 10pt; }
+            .print-hidden { display: none !important; }
+            #app-container { padding: 0 !important; min-height: 0 !important; }
+            main { margin-top: 0 !important; max-width: 100% !important; }
+            #main-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+            #main-header h1 { font-size: 20pt; font-weight: bold; color: #000; }
+            #main-header p { display: none; }
+            #main-header::after { content: "Date: " attr(data-print-date); font-size: 10pt; }
+            .details-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0 !important; margin-bottom: 1.5rem !important; border: none !important; box-shadow: none !important; page-break-inside: avoid; }
+            .details-container h3 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 8px; }
+            .details-container .grid { gap: 4px 8px; }
+            #client-address-label::before { content: 'Site Address:'; }
+            #client-address-label { font-size: 0; }
+            input, textarea, select { border: none !important; box-shadow: none !important; background-color: transparent !important; padding: 1px 0 !important; -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 100% !important; color: #000 !important; font-size: 10pt; resize: none; overflow-wrap: break-word; }
+            input[readonly], textarea[readonly] { -webkit-text-fill-color: #000 !important; opacity: 1 !important; cursor: default !important; }
+            ::placeholder { color: transparent !important; }
+            .pointer-events-none { display: none !important; }
+            .product-table-container { border: 1px solid #333 !important; box-shadow: none !important; border-radius: 0 !important; }
+            .product-table-header { background-color: #eee !important; border-bottom: 1px solid #333 !important; font-size: 9pt; font-weight: bold; }
+            /* remove Tailwind's divide-y effect in print using a standard border rule */
+            #grid-rows-wrapper { border-top: none !important; }
+            #grid-rows-wrapper > div { border-bottom: 1px solid #ccc; padding-top: 6px !important; padding-bottom: 6px !important; page-break-inside: avoid; }
+            #grid-rows-wrapper > div:last-child { border-bottom: none; }
+            .product-name-cell { overflow-wrap: break-word; word-break: break-word; }
+            .quantity-input { text-align: left !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div id="app-container" class="min-h-screen antialiased flex flex-col items-center p-4 sm:p-6 lg:p-12">
+      
+      <!-- Header with Action Buttons -->
+      <header class="fixed top-0 left-0 p-4 z-20 flex items-center gap-3 print-hidden">
+        <button id="open-archive-btn" class="p-3 rounded-full bg-white shadow-lg text-slate-500 hover:bg-slate-100 hover:text-sky-500 hover:scale-105 transform transition-all duration-200 custom-focus-ring" aria-label="Open saved forms">
+          <!-- Archive Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+        </button>
+        <button id="open-settings-btn" class="p-3 rounded-full bg-white shadow-lg text-slate-500 hover:bg-slate-100 hover:text-sky-500 hover:scale-105 transform transition-all duration-200 custom-focus-ring" aria-label="Open settings">
+          <!-- SettingsIcon SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+        <button id="save-form-btn" class="p-3 rounded-full bg-white shadow-lg text-slate-500 hover:bg-slate-100 hover:text-sky-500 hover:scale-105 transform transition-all duration-200 custom-focus-ring" aria-label="Save form">
+          <!-- Save Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+        </button>
+        <button id="print-btn" class="p-3 rounded-full bg-white shadow-lg text-slate-500 hover:bg-slate-100 hover:text-sky-500 hover:scale-105 transform transition-all duration-200 custom-focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:text-slate-500" aria-label="Print form" disabled>
+          <!-- PrintIcon SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-8a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+        </button>
+      </header>
+
+      <!-- Main Content: Product Grid -->
+      <main class="w-full max-w-6xl mt-16">
+         <div id="product-grid-container" class="w-full">
+            <header id="main-header" class="mb-8 text-center">
+                             <h1 id="brand-heading" class="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">OTNIC</h1>
+            </header>
+            
+            <div class="details-container grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 mb-10 p-8 bg-white rounded-xl shadow-md border border-slate-200">
+                <!-- Client Details Column -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Client Details</h3>
+                    <div class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
+                        <label for="client-name" class="text-sm font-medium text-slate-600 text-right">Name:</label>
+                        <input id="client-name" type="text" placeholder="Client's full name" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring">
+                        <label for="client-phone" class="text-sm font-medium text-slate-600 text-right">Phone:</label>
+                        <input id="client-phone" type="tel" placeholder="(555) 123-4567" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring">
+                        <label for="client-mobile" class="text-sm font-medium text-slate-600 text-right">Mobile:</label>
+                        <input id="client-mobile" type="tel" placeholder="(555) 987-6543" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring">
+                        <label id="client-address-label" for="client-address" class="text-sm font-medium text-slate-600 text-right self-start pt-2">Address:</label>
+                        <textarea id="client-address" rows="2" placeholder="123 Main St, Anytown, USA" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring"></textarea>
+                    </div>
+                </div>
+                <!-- Technician Details Column -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Technician Details</h3>
+                    <div class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
+                        <label for="technician-name" class="text-sm font-medium text-slate-600 text-right">Name:</label>
+                        <input id="technician-name" type="text" readonly class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-slate-100 cursor-not-allowed text-slate-700">
+                        <label for="technician-phone" class="text-sm font-medium text-slate-600 text-right">Phone:</label>
+                        <input id="technician-phone" type="tel" readonly class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-slate-100 cursor-not-allowed text-slate-700">
+                        <label for="technician-address" class="text-sm font-medium text-slate-600 text-right self-start pt-2">Address:</label>
+                        <textarea id="technician-address" rows="2" readonly class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-slate-100 cursor-not-allowed text-slate-700"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-table-container bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+              <div class="product-table-header grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-6 py-4 bg-slate-100/70 border-b border-slate-200">
+                <div class="w-12 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">#</div>
+                <div class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Product</div>
+                <div class="w-28 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Quantity</div>
+                <div class="w-32 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Units</div>
+                <div class="w-12" aria-hidden="true"></div>
+              </div>
+              <div id="grid-rows-wrapper" class="divide-y divide-slate-200"></div>
+            </div>
+      
+            <div class="mt-8 flex justify-center print-hidden">
+              <button id="add-row-btn" class="flex items-center justify-center px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-100 hover:border-slate-400 active:scale-95 transform transition-all duration-150 custom-focus-ring">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                Add Row
+              </button>
+            </div>
+         </div>
+      </main>
+
+      <!-- Settings Panel -->
+      <div id="settings-panel-container" class="fixed inset-0 z-30 transition-opacity duration-300 opacity-0 pointer-events-none print-hidden">
+        <div id="settings-panel-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
+        <div id="settings-panel" class="absolute top-0 left-0 h-full w-full max-w-md bg-slate-50 shadow-2xl transform transition-transform duration-300 ease-in-out -translate-x-full" role="dialog" aria-modal="true" aria-labelledby="settings-panel-title">
+          <div class="flex flex-col h-full">
+            <header class="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0 bg-white">
+              <h2 id="settings-panel-title" class="text-xl font-semibold text-slate-900">Settings & Inventory</h2>
+              <button id="close-settings-btn" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 custom-focus-ring transition-colors" aria-label="Close settings panel">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </header>
+            <div class="flex-grow overflow-y-auto p-6 space-y-8">
+              <section>
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">Technician Details</h3>
+                <form id="technician-details-form" class="space-y-4 p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <div><label for="technician-settings-name" class="block text-sm font-medium text-slate-600 mb-1">Your Name</label><input id="technician-settings-name" type="text" placeholder="e.g., John Doe" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring"></div>
+                    <div><label for="technician-settings-phone" class="block text-sm font-medium text-slate-600 mb-1">Your Phone Number</label><input id="technician-settings-phone" type="tel" placeholder="e.g., (555) 123-4567" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring"></div>
+                    <div><label for="technician-settings-address" class="block text-sm font-medium text-slate-600 mb-1">Your Address</label><textarea id="technician-settings-address" rows="3" placeholder="e.g., 456 Tech Ave, Server City" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring"></textarea></div>
+                </form>
+              </section>
+              <section>
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">Add New Product</h3>
+                <form id="add-product-form" class="space-y-4 p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
+                  <div><label for="product-name" class="block text-sm font-medium text-slate-600 mb-1">Product Name</label><input id="product-name" name="name" type="text" placeholder="e.g., Ergonomic Chair" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring" required></div>
+                  <div class="flex items-end gap-4">
+                    <div class="flex-grow"><label for="measurement-value" class="block text-sm font-medium text-slate-600 mb-1">Measurement</label><input id="measurement-value" name="measurementValue" type="number" placeholder="e.g., 27" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm custom-focus-ring"></div>
+                    <div class="flex-grow"><label for="measurement-unit" class="block text-sm font-medium text-slate-600 mb-1">Unit</label><div class="relative"><select id="measurement-unit" name="measurementUnit" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm custom-focus-ring appearance-none bg-white pr-8"></select><div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div></div></div>
+                  </div>
+                  <button type="submit" id="add-product-submit-btn" class="w-full flex items-center justify-center px-4 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:bg-sky-400 disabled:cursor-not-allowed transition-all custom-focus-ring active:scale-[0.98]"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Add Product</button>
+                </form>
+              </section>
+              <section><h3 class="text-lg font-semibold mb-4 text-slate-800">Current Inventory</h3><div id="product-list-container"></div></section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Archive Panel -->
+      <div id="archive-panel-container" class="fixed inset-0 z-40 transition-opacity duration-300 opacity-0 pointer-events-none print-hidden">
+        <div id="archive-panel-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
+        <div id="archive-panel" class="absolute top-0 left-0 h-full w-full max-w-md bg-slate-50 shadow-2xl transform transition-transform duration-300 ease-in-out -translate-x-full" role="dialog" aria-modal="true" aria-labelledby="archive-panel-title">
+          <div class="flex flex-col h-full">
+            <header class="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0 bg-white">
+              <h2 id="archive-panel-title" class="text-xl font-semibold text-slate-900">Saved Forms</h2>
+              <div class="flex items-center gap-2">
+                <button id="new-form-btn" class="px-3 py-1.5 text-sm bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 custom-focus-ring">New Blank Form</button>
+                <button id="close-archive-btn" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 custom-focus-ring transition-colors" aria-label="Close saved forms panel">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </header>
+            <div id="saved-forms-list" class="flex-grow overflow-y-auto p-4 space-y-3">
+              <!-- Saved forms will be dynamically inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        
+        // ================================================================================================
+        // DATABASE & STATE SETUP
+        // ================================================================================================
+        const db = new Dexie('ProductSelectorProDB');
+        db.version(1).stores({
+            products: '++id, name', // Primary key 'id' auto-increments, index 'name'
+            forms: '++id, savedAt', // Primary key 'id' auto-increments, index 'savedAt'
+            settings: 'key, value' // Simple key-value store for technician details etc.
+        });
+
+        const UNITS = ['units', 'cm', 'inch', 'm', 'ft', 'g', 'kg', 'lb', 'ml', 'l', 'oz'];
+        const MASTER_PRODUCTS = [
+            { id: 101, name: 'Ergonomic Office Chair', measurementValue: 1, measurementUnit: 'units' },
+            { id: 107, name: '4K IPS Monitor', measurementValue: 27, measurementUnit: 'inch' },
+            { id: 105, name: 'Mechanical Keyboard', measurementValue: 1, measurementUnit: 'units' },
+            { id: 111, name: 'Premium Coffee Beans', measurementValue: 1, measurementUnit: 'kg' },
+        ];
+
+        let state = {
+            products: [],
+            productsById: new Map(),
+            technicianDetails: { name: '', phone: '', address: '' },
+            activeForm: null // Will be loaded from DB
+        };
+
+        // DOM SELECTORS (unchanged)
+        const mainHeader = document.getElementById('main-header');
+        const settingsPanelContainer = document.getElementById('settings-panel-container');
+        const settingsPanel = document.getElementById('settings-panel');
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const settingsPanelOverlay = document.getElementById('settings-panel-overlay');
+        const archivePanelContainer = document.getElementById('archive-panel-container');
+        const archivePanel = document.getElementById('archive-panel');
+        const openArchiveBtn = document.getElementById('open-archive-btn');
+        const closeArchiveBtn = document.getElementById('close-archive-btn');
+        const archivePanelOverlay = document.getElementById('archive-panel-overlay');
+        const savedFormsList = document.getElementById('saved-forms-list');
+        const newFormBtn = document.getElementById('new-form-btn');
+        const addProductForm = document.getElementById('add-product-form');
+        const productNameInput = document.getElementById('product-name');
+        const addProductSubmitBtn = document.getElementById('add-product-submit-btn');
+        const productListContainer = document.getElementById('product-list-container');
+        const gridRowsWrapper = document.getElementById('grid-rows-wrapper');
+        const addRowBtn = document.getElementById('add-row-btn');
+        const measurementUnitSelect = document.getElementById('measurement-unit');
+        const printBtn = document.getElementById('print-btn');
+        const saveFormBtn = document.getElementById('save-form-btn');
+        const clientNameInput = document.getElementById('client-name');
+        const clientPhoneInput = document.getElementById('client-phone');
+        const clientMobileInput = document.getElementById('client-mobile');
+        const clientAddressInput = document.getElementById('client-address');
+        const technicianNameInput = document.getElementById('technician-name');
+        const technicianPhoneInput = document.getElementById('technician-phone');
+        const technicianAddressInput = document.getElementById('technician-address');
+        const technicianDetailsForm = document.getElementById('technician-details-form');
+        const technicianSettingsNameInput = document.getElementById('technician-settings-name');
+        const technicianSettingsPhoneInput = document.getElementById('technician-settings-phone');
+        const technicianSettingsAddressInput = document.getElementById('technician-settings-address');
+
+        // ================================================================================================
+        // UTILITY & RENDER FUNCTIONS
+        // ================================================================================================
+        
+        // Debounce function to prevent excessive DB writes on input fields
+        function debounce(func, delay = 300) {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => { func.apply(this, args); }, delay);
+            };
+        }
+
+        function createNewFormObject() {
+            return {
+                // No 'id' property until it's saved for the first time
+                clientDetails: { name: '', phone: '', mobile: '', address: '' },
+                gridRows: [{ id: Date.now(), productId: null, quantity: 1, unit: 'units' }],
+                savedAt: null
+            };
+        }
+
+        function updateProductsById() { state.productsById = new Map(state.products.map(p => [p.id, p])); }
+        
+        function rerenderMainUI() {
+            if (!state.activeForm) return;
+            updateProductsById();
+            populateTechnicianDetails();
+            populateActiveFormDetails();
+            renderProductGrid();
+            renderProductList();
+            printBtn.disabled = !state.activeForm.id;
+        }
+
+        function populateTechnicianDetails() {
+            const { name, phone, address } = state.technicianDetails;
+            technicianNameInput.value = name;
+            technicianPhoneInput.value = phone;
+            technicianAddressInput.value = address;
+            technicianSettingsNameInput.value = name;
+            technicianSettingsPhoneInput.value = phone;
+            technicianSettingsAddressInput.value = address;
+        }
+
+        function populateActiveFormDetails() {
+            const { clientDetails } = state.activeForm;
+            clientNameInput.value = clientDetails.name;
+            clientPhoneInput.value = clientDetails.phone;
+            clientMobileInput.value = clientDetails.mobile;
+            clientAddressInput.value = clientDetails.address;
+        }
+
+        // RENDER FUNCTIONS (mostly unchanged, they just read from the new state object)
+        function renderProductGrid() {
+            gridRowsWrapper.innerHTML = '';
+            state.activeForm.gridRows.forEach((row, index) => {
+                const selectedProduct = row.productId ? state.productsById.get(row.productId) : null;
+                const rowElement = document.createElement('div');
+                rowElement.className = "group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors duration-150";
+                rowElement.dataset.rowId = row.id;
+                const unitOptions = UNITS.map(u => `<option value="${u}" ${u === row.unit ? 'selected' : ''}>${u}</option>`).join('');
+                rowElement.innerHTML = `<div class="w-12 text-slate-500 font-medium text-left">${index + 1}.</div><div class="flex items-center gap-3 product-name-cell"><div class="flex-grow"><div class="relative autocomplete-container"><div class="relative"><input type="text" value="${selectedProduct ? selectedProduct.name : ''}" placeholder="Type to search products..." class="w-full px-3 py-2 text-base border border-slate-300 rounded-md shadow-sm placeholder-slate-400 custom-focus-ring autocomplete-input" aria-autocomplete="list" aria-expanded="false"/>${selectedProduct ? `<button class="absolute inset-y-0 right-0 flex items-center pr-3 clear-search-btn print-hidden" aria-label="Clear search"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 hover:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>` : ''}</div><ul class="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto hidden autocomplete-results print-hidden"></ul></div></div>${selectedProduct ? `<span class="text-slate-500 text-sm whitespace-nowrap flex-shrink-0 print-hidden">(${selectedProduct.measurementValue} ${selectedProduct.measurementUnit})</span>` : ''}</div><div class="w-28"><input type="number" value="${row.quantity}" min="0" class="w-24 px-2 py-2 text-center bg-white border border-slate-300 rounded-md shadow-sm custom-focus-ring disabled:bg-slate-100 disabled:cursor-not-allowed quantity-input" aria-label="Quantity" ${!selectedProduct ? 'disabled' : ''}/></div><div class="w-32"><div class="relative"><select class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm custom-focus-ring appearance-none bg-white pr-8 disabled:bg-slate-100 disabled:cursor-not-allowed unit-select" aria-label="Unit" ${!selectedProduct ? 'disabled' : ''}>${unitOptions}</select><div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div></div></div><div class="w-12 flex items-center justify-center"><button class="p-2 rounded-full text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 focus:opacity-100 custom-focus-ring transition-all delete-row-btn print-hidden" aria-label="Delete row"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`;
+                gridRowsWrapper.appendChild(rowElement);
+            });
+        }
+
+        function renderProductList() {
+            const sortedProducts = [...state.products].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+            if (sortedProducts.length === 0) {
+                productListContainer.innerHTML = `<div class="text-center py-10 px-6 border-2 border-dashed border-slate-200 rounded-lg bg-white"><svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="mt-2 text-lg font-medium text-slate-700">Inventory is Empty</h3><p class="mt-1 text-sm text-slate-500">Add a product using the form above to get started.</p></div>`;
+                return;
+            }
+            const listItems = sortedProducts.map((product, index) => `<li class="group flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors duration-150" data-product-id="${product.id}"><div class="flex-1 flex items-center min-w-0"><span class="text-sm font-medium text-slate-400 w-8 text-right mr-4 flex-shrink-0">${index + 1}.</span><div class="min-w-0"><p class="text-base font-medium text-slate-800 truncate">${product.name}</p><div class="flex items-center gap-x-4 text-sm text-slate-500 mt-1">${product.measurementValue > 0 ? `<span>${product.measurementValue} ${product.measurementUnit}</span>` : ''}</div></div></div><button class="ml-4 p-2 rounded-full text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 focus:opacity-100 custom-focus-ring transition-all flex-shrink-0 delete-product-btn" aria-label="Delete ${product.name}"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></li>`).join('');
+            productListContainer.innerHTML = `<div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden"><ul class="divide-y divide-slate-200">${listItems}</ul></div>`;
+        }
+
+        async function renderSavedFormsList() {
+            const sortedForms = await db.forms.orderBy('savedAt').reverse().toArray();
+            if (sortedForms.length === 0) {
+                savedFormsList.innerHTML = `<div class="text-center py-10 px-6"><svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="mt-2 text-lg font-medium text-slate-700">No Saved Forms</h3><p class="mt-1 text-sm text-slate-500">Save a form using the save icon to see it here.</p></div>`;
+                return;
+            }
+            savedFormsList.innerHTML = sortedForms.map(form => {
+                const savedDate = new Date(form.savedAt);
+                return `
+                <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold text-slate-800">${form.clientDetails.name || 'Untitled Form'}</p>
+                            <p class="text-sm text-slate-500">Saved: ${savedDate.toLocaleDateString()} at ${savedDate.toLocaleTimeString()}</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button data-form-id="${form.id}" class="load-form-btn px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-md shadow-sm hover:bg-slate-100 custom-focus-ring">Load</button>
+                            <button data-form-id="${form.id}" class="delete-form-btn p-2 text-slate-500 hover:bg-red-100 hover:text-red-600 rounded-full custom-focus-ring"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ================================================================================================
+        // EVENT HANDLERS & LOGIC
+        // ================================================================================================
+        
+        // Panel Controls (unchanged)
+        function openPanel(panelContainer, panel) { panelContainer.classList.remove('opacity-0', 'pointer-events-none'); panel.classList.remove('-translate-x-full'); }
+        function closePanel(panelContainer, panel) { panelContainer.classList.add('opacity-0', 'pointer-events-none'); panel.classList.add('-translate-x-full'); }
+        openSettingsBtn.addEventListener('click', () => { openPanel(settingsPanelContainer, settingsPanel); technicianSettingsNameInput.focus(); });
+        closeSettingsBtn.addEventListener('click', () => closePanel(settingsPanelContainer, settingsPanel));
+        settingsPanelOverlay.addEventListener('click', () => closePanel(settingsPanelContainer, settingsPanel));
+        openArchiveBtn.addEventListener('click', () => { renderSavedFormsList(); openPanel(archivePanelContainer, archivePanel); });
+        closeArchiveBtn.addEventListener('click', () => closePanel(archivePanelContainer, archivePanel));
+        archivePanelOverlay.addEventListener('click', () => closePanel(archivePanelContainer, archivePanel));
+        
+        // --- DATABASE-DRIVEN ACTIONS ---
+
+        async function saveActiveForm() {
+            if (!state.activeForm) return;
+            // Use db.forms.put() which handles both create (if no id) and update (if id exists)
+            const id = await db.forms.put(state.activeForm);
+            state.activeForm.id = id; // Ensure state has the new ID if it was just created
+            await db.settings.put({ key: 'activeFormId', value: id });
+            printBtn.disabled = false;
+        }
+
+        const debouncedSaveActiveForm = debounce(saveActiveForm, 500);
+
+        async function handleSaveForm() {
+            state.activeForm.savedAt = Date.now();
+            await saveActiveForm();
+            alert('Form saved successfully!');
+        }
+
+        async function handleNewForm() {
+            if (!confirm('Are you sure you want to start a new form? Any unsaved changes will be lost.')) return;
+            state.activeForm = createNewFormObject();
+            await db.settings.put({ key: 'activeFormId', value: null }); // No active form ID
+            rerenderMainUI();
+            closePanel(archivePanelContainer, archivePanel);
+        }
+
+        newFormBtn.addEventListener('click', handleNewForm);
+        saveFormBtn.addEventListener('click', handleSaveForm);
+        printBtn.addEventListener('click', () => { mainHeader.dataset.printDate = new Date().toLocaleDateString(); window.print(); });
+        
+        // Live updates to active form state (now debounced)
+        [clientNameInput, clientPhoneInput, clientMobileInput, clientAddressInput].forEach(input => {
+            input.addEventListener('input', (e) => {
+                const field = e.target.id.split('-')[1]; // 'name', 'phone', etc.
+                state.activeForm.clientDetails[field] = e.target.value;
+                debouncedSaveActiveForm();
+            });
+        });
+
+        technicianDetailsForm.addEventListener('input', debounce(async (e) => {
+            const { id, value } = e.target;
+            if (id === 'technician-settings-name') state.technicianDetails.name = value;
+            else if (id === 'technician-settings-phone') state.technicianDetails.phone = value;
+            else if (id === 'technician-settings-address') state.technicianDetails.address = value;
+            await db.settings.put({ key: 'technicianDetails', value: state.technicianDetails });
+            populateTechnicianDetails();
+        }, 500));
+
+        addProductForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(addProductForm);
+            const newProduct = { name: formData.get('name').trim(), measurementValue: parseFloat(formData.get('measurementValue')) || 0, measurementUnit: formData.get('measurementUnit') };
+            
+            const newId = await db.products.add(newProduct);
+            newProduct.id = newId;
+            state.products.push(newProduct);
+
+            addProductForm.reset();
+            productNameInput.focus();
+            productNameInput.dispatchEvent(new Event('input'));
+            rerenderMainUI();
+            const newItem = productListContainer.querySelector(`[data-product-id="${newProduct.id}"]`);
+            if (newItem) newItem.classList.add('fade-in-up');
+        });
+
+        productNameInput.addEventListener('input', () => { addProductSubmitBtn.disabled = productNameInput.value.trim() === ''; });
+
+        productListContainer.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('.delete-product-btn');
+            if (deleteBtn) {
+                const productId = parseInt(deleteBtn.closest('li').dataset.productId);
+                await db.products.delete(productId);
+                state.products = state.products.filter(p => p.id !== productId);
+                
+                // Also clear this product from the active form
+                let formChanged = false;
+                state.activeForm.gridRows = state.activeForm.gridRows.map(row => {
+                    if (row.productId === productId) {
+                        formChanged = true;
+                        return { ...row, productId: null, quantity: 1, unit: 'units' };
+                    }
+                    return row;
+                });
+                if (formChanged) await saveActiveForm();
+
+                rerenderMainUI();
+            }
+        });
+
+        addRowBtn.addEventListener('click', () => {
+            const newRow = { id: Date.now(), productId: null, quantity: 1, unit: 'units' };
+            state.activeForm.gridRows.push(newRow);
+            debouncedSaveActiveForm();
+            renderProductGrid();
+            const newRowElement = gridRowsWrapper.querySelector(`[data-row-id="${newRow.id}"]`);
+            if (newRowElement) { newRowElement.classList.add('fade-in-up'); newRowElement.querySelector('input')?.focus(); }
+        });
+
+        gridRowsWrapper.addEventListener('change', (e) => {
+            const rowElement = e.target.closest('[data-row-id]');
+            if (!rowElement) return;
+            const rowId = parseInt(rowElement.dataset.rowId);
+            const rowIndex = state.activeForm.gridRows.findIndex(r => r.id === rowId);
+            if (rowIndex === -1) return;
+            if (e.target.classList.contains('quantity-input')) {
+                const newQuantity = Math.max(0, parseFloat(e.target.value) || 0);
+                state.activeForm.gridRows[rowIndex].quantity = newQuantity;
+                e.target.value = newQuantity;
+            } else if (e.target.classList.contains('unit-select')) {
+                state.activeForm.gridRows[rowIndex].unit = e.target.value;
+            }
+            debouncedSaveActiveForm();
+        });
+
+        gridRowsWrapper.addEventListener('click', (e) => {
+            const rowElement = e.target.closest('[data-row-id]');
+            if (!rowElement) return;
+            const rowId = parseInt(rowElement.dataset.rowId);
+            
+            if (e.target.closest('.delete-row-btn')) {
+                if (rowElement.classList.contains('removing')) return;
+                rowElement.classList.add('removing');
+                setTimeout(() => {
+                    state.activeForm.gridRows = state.activeForm.gridRows.filter(row => row.id !== rowId);
+                    saveActiveForm(); // Save immediately on deletion
+                    renderProductGrid();
+                }, 220);
+                return;
+            }
+
+            if (e.target.closest('.clear-search-btn')) {
+                const rowIndex = state.activeForm.gridRows.findIndex(r => r.id === rowId);
+                if (rowIndex > -1) {
+                    state.activeForm.gridRows[rowIndex] = { ...state.activeForm.gridRows[rowIndex], productId: null, quantity: 1, unit: 'units' };
+                    saveActiveForm();
+                    rerenderMainUI();
+                }
+            }
+        });
+
+        savedFormsList.addEventListener('click', async (e) => {
+            const loadBtn = e.target.closest('.load-form-btn');
+            const deleteBtn = e.target.closest('.delete-form-btn');
+            if (loadBtn) {
+                const formId = parseInt(loadBtn.dataset.formId);
+                const formToLoad = await db.forms.get(formId);
+                if (formToLoad) {
+                    state.activeForm = formToLoad;
+                    await db.settings.put({ key: 'activeFormId', value: formId });
+                    rerenderMainUI();
+                    closePanel(archivePanelContainer, archivePanel);
+                }
+            }
+            if (deleteBtn) {
+                if (!confirm('Are you sure you want to permanently delete this form?')) return;
+                const formId = parseInt(deleteBtn.dataset.formId);
+                await db.forms.delete(formId);
+                
+                const activeFormIdSetting = await db.settings.get('activeFormId');
+                if (activeFormIdSetting && activeFormIdSetting.value === formId) {
+                    await handleNewForm();
+                }
+                renderSavedFormsList();
+            }
+        });
+
+        // Autocomplete Logic (unchanged)
+        function closeAllAutocompletes() { document.querySelectorAll('.autocomplete-results').forEach(el => el.classList.add('hidden')); document.querySelectorAll('.autocomplete-input').forEach(el => el.setAttribute('aria-expanded', 'false')); }
+        document.addEventListener('click', (e) => { if (!e.target.closest('.autocomplete-container')) closeAllAutocompletes(); });
+        gridRowsWrapper.addEventListener('input', (e) => {
+            if (!e.target.classList.contains('autocomplete-input')) return;
+            const input = e.target;
+            const container = input.closest('.autocomplete-container');
+            const resultsContainer = container.querySelector('.autocomplete-results');
+            const query = input.value.toLowerCase();
+            resultsContainer.innerHTML = '';
+            if (query.length === 0) { resultsContainer.classList.add('hidden'); return; }
+            const filtered = state.products.filter(p => p.name.toLowerCase().includes(query));
+            if (filtered.length > 0) {
+                filtered.forEach((product) => {
+                    const li = document.createElement('li');
+                    li.className = 'px-4 py-2.5 cursor-pointer hover:bg-slate-100 text-slate-800';
+                    li.dataset.productId = product.id;
+                    li.innerHTML = `<div class="flex justify-between items-center"><span>${product.name}</span><span class="text-xs text-slate-500">${product.measurementValue} ${product.measurementUnit}</span></div>`;
+                    resultsContainer.appendChild(li);
+                });
+                resultsContainer.classList.remove('hidden');
+                input.setAttribute('aria-expanded', 'true');
+            } else { resultsContainer.classList.add('hidden'); input.setAttribute('aria-expanded', 'false'); }
+        });
+        gridRowsWrapper.addEventListener('click', (e) => {
+            const resultItem = e.target.closest('.autocomplete-results li');
+            if (resultItem) {
+                const productId = parseInt(resultItem.dataset.productId);
+                const product = state.productsById.get(productId);
+                const rowId = parseInt(resultItem.closest('[data-row-id]').dataset.rowId);
+                const rowIndex = state.activeForm.gridRows.findIndex(r => r.id === rowId);
+                if (product && rowIndex > -1) {
+                    state.activeForm.gridRows[rowIndex] = { ...state.activeForm.gridRows[rowIndex], productId: product.id, quantity: 1, unit: product.measurementUnit };
+                    saveActiveForm();
+                    rerenderMainUI();
+                }
+                closeAllAutocompletes();
+            }
+        });
+        gridRowsWrapper.addEventListener('mouseover', (e) => {
+            const li = e.target.closest('.autocomplete-results li');
+            if (!li) return;
+            const list = li.parentElement;
+            list.querySelectorAll('li').forEach(i => i.classList.remove('bg-sky-100', 'text-sky-800'));
+            li.classList.add('bg-sky-100', 'text-sky-800');
+        });
+        gridRowsWrapper.addEventListener('mouseout', (e) => {
+            const li = e.target.closest('.autocomplete-results li');
+            if (!li) return;
+            li.classList.remove('bg-sky-100', 'text-sky-800');
+        });
+        gridRowsWrapper.addEventListener('keydown', (e) => {
+            if (!e.target.classList.contains('autocomplete-input')) return;
+            const container = e.target.closest('.autocomplete-container');
+            const resultsContainer = container.querySelector('.autocomplete-results');
+            const items = resultsContainer.querySelectorAll('li');
+            if (items.length === 0 && e.key !== 'Escape') return;
+            e.preventDefault();
+            let activeIndex = Array.from(items).findIndex(item => item.classList.contains('bg-sky-100'));
+            if (e.key === 'ArrowDown') { activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : 0; } 
+            else if (e.key === 'ArrowUp') { activeIndex = activeIndex > 0 ? activeIndex - 1 : items.length - 1; } 
+            else if (e.key === 'Enter') { if (activeIndex === -1 && items.length > 0) activeIndex = 0; if (activeIndex > -1) items[activeIndex].click(); } 
+            else if (e.key === 'Escape') { closeAllAutocompletes(); return; } 
+            else { return; }
+            items.forEach((item, index) => {
+                item.classList.toggle('bg-sky-100', index === activeIndex);
+                item.classList.toggle('text-sky-800', index === activeIndex);
+                if (index === activeIndex) item.scrollIntoView({ block: 'nearest' });
+            });
+        });
+
+        // ================================================================================================
+        // INITIALIZATION
+        // ================================================================================================
+        async function init() {
+            measurementUnitSelect.innerHTML = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+            
+            // Populate DB with master products if it's empty
+            const productCount = await db.products.count();
+            if (productCount === 0) {
+                await db.products.bulkAdd(MASTER_PRODUCTS);
+            }
+
+            // Load all necessary data from DB into the state object
+            const [products, technicianDetails, activeFormIdSetting] = await Promise.all([
+                db.products.toArray(),
+                db.settings.get('technicianDetails'),
+                db.settings.get('activeFormId')
+            ]);
+
+            state.products = products;
+            if (technicianDetails) state.technicianDetails = technicianDetails.value;
+
+            let activeForm = null;
+            if (activeFormIdSetting && activeFormIdSetting.value) {
+                activeForm = await db.forms.get(activeFormIdSetting.value);
+            }
+            
+            // If no active form was found (or it's the first run), create a new one
+            if (!activeForm) {
+                activeForm = createNewFormObject();
+                // We don't save it here, it will be saved on the first user interaction
+            }
+            state.activeForm = activeForm;
+
+            rerenderMainUI();
+        }
+
+        init();
+      });
+    </script>
+</body>
+</html>
